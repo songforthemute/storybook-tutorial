@@ -2,7 +2,8 @@
 
 -   [References](#references)
 -   [시작하기](#시작하기)
--   []()
+-   [간단한 컴포넌트](#간단한-컴포넌트)
+-   [복잡한 컴포넌트](#복잡한-컴포넌트)
 
 ---
 
@@ -39,15 +40,14 @@ yarn storybook
 
 ## 간단한 컴포넌트
 
--   [Setup](#setup)
+-   [Setup Task](#setup-task)
 -   [Config](#config)
 -   [Catch accessibilisty issues](#catch-accessibility-issues)
 
-#### Setup
+#### Setup Task
 
 ```jsx
 // src/components/Task.jsx
-
 import React from "react";
 
 export default function Task({
@@ -56,17 +56,53 @@ export default function Task({
     onPinTask,
 }) {
     return (
-        <div className="list-item">
-            <label htmlFor="title" aria-label={title}>
-                <input type="text" value={title} readOnly={true} name="title" />
+        <div className={`list-item ${state}`}>
+            <label
+                htmlFor="checked"
+                aria-label={`archiveTask-${id}`}
+                className="checkbox"
+            >
+                <input
+                    type="checkbox"
+                    disabled={true}
+                    name="checked"
+                    id={`archiveTask-${id}`}
+                    checked={state === "TASK_ARCHIVED"}
+                />
+                <span
+                    className="checkbox-custom"
+                    onClick={() => onArchiveTask(id)}
+                />
             </label>
+
+            <label htmlFor="title" aria-label={title} className="title">
+                <input
+                    type="text"
+                    value={title}
+                    readOnly={true}
+                    name="title"
+                    placeholder="Input title"
+                />
+            </label>
+
+            {state !== "TASK_ARCHIVED" && (
+                <button
+                    className="pin-button"
+                    onClick={() => onPinTask(id)}
+                    id={`pinTask-${id}`}
+                    aria-label={`pinTask-${id}`}
+                    key={`pinTask-${id}`}
+                >
+                    <span className={`icon-star`} />
+                </button>
+            )}
         </div>
     );
 }
 ```
 
-```javascript
-// src/components/Task.stories.js
+```jsx
+// src/components/Task.stories.jsx
 import Task from "./Task";
 
 export default {
@@ -182,3 +218,131 @@ $
 
 -   `@storybook/addon-a11y` 플러그인을 설치하고, `.storybook/main.js` 파일의 `addon`에 추가.
 -   서버를 재시작하면, 컴포넌트의 상태에 따라 접근성 요소가 문제가 있으면 Accessibility 탭에서 원인을 파악 가능.
+
+---
+
+## 복잡한 컴포넌트
+
+-   `Task`를 담고 있는--Pinned Task를 기본 작업 위에 배치하여 강조하는 `TaskBox`같은 컴포넌트나, `Task` 데이터는 비동기적으로 전송될 수 있으므로 연결이 없을 때 렌더링할 로딩 상태도 필요.
+
+-   [Setup TaskList](#setup-tasklist)
+
+#### Setup TaskList
+
+```jsx
+// src/components/TaskList.jsx
+import React from "react";
+import Task from "./Task";
+
+export default function TaskList({ loading, tasks, onPinTask, onArchiveTask }) {
+    const events = {
+        onPinTask,
+        onArchiveTask,
+    };
+
+    const LoadingRow = (
+        <div className="loading-item">
+            <span className="glow-checkbox" />
+            <span className="glow-text">
+                <span>Loading</span> <span>cool</span> <span>state</span>
+            </span>
+        </div>
+    );
+
+    if (loading) {
+        return (
+            <div className="list-items" data-testid="loading" key={"loading"}>
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+            </div>
+        );
+    }
+
+    if (tasks.length === 0) {
+        return (
+            <div className="list-items" key={"empty"} data-testid="empty">
+                <div className="wrapper-message">
+                    <span className="icon-check" />
+                    <p className="title-message">You have no tasks</p>
+                    <p className="subtitle-message">Sit back and relax</p>
+                </div>
+            </div>
+        );
+    }
+
+    const tasksInOrder = [
+        ...tasks.filter((t) => t.state === "TASK_PINNED"),
+        ...tasks.filter((t) => t.state !== "TASK_PINNED"),
+    ];
+    return (
+        <div className="list-items">
+            {tasksInOrder.map((task) => (
+                <Task key={task.id} task={task} {...events} />
+            ))}
+        </div>
+    );
+}
+```
+
+```jsx
+// src/components/TaskList.stories.jsx
+import TaskList from "./TaskList";
+import * as TaskStories from "./Task.stories";
+
+export default {
+    component: TaskList,
+    title: "TaskList",
+    decorators: [(story) => <div style={{ padding: "3rem" }}>{story()}</div>],
+    tags: ["autodocs"],
+};
+
+/**
+ * 데코레이터는 스토리에 어떤 Wrapper를 제공하는 방법.
+ * 여기서는 데코레이터를 사용해 렌더링된 컴포넌트 주위에 패딩을 추가하고 있음.
+ * React Context를 설정하는 라이브러리 컴포넌트에서 스토리를 감싸는 데도 사용할 수 있음.
+ */
+
+export const Default = {
+    args: {
+        // Shaping the stories through args composition.
+        // The data was inherited from the Default story in Task.stories.jsx.
+        tasks: [
+            { ...TaskStories.Default.args.task, id: "1", title: "Task 1" },
+            { ...TaskStories.Default.args.task, id: "2", title: "Task 2" },
+            { ...TaskStories.Default.args.task, id: "3", title: "Task 3" },
+            { ...TaskStories.Default.args.task, id: "4", title: "Task 4" },
+            { ...TaskStories.Default.args.task, id: "5", title: "Task 5" },
+            { ...TaskStories.Default.args.task, id: "6", title: "Task 6" },
+        ],
+    },
+};
+
+export const WithPinnedTasks = {
+    args: {
+        tasks: [
+            ...Default.args.tasks.slice(0, 5),
+            { id: "6", title: "Task 6 (pinned)", state: "TASK_PINNED" },
+        ],
+    },
+};
+
+export const Loading = {
+    args: {
+        tasks: [],
+        loading: true,
+    },
+};
+
+export const Empty = {
+    args: {
+        // Shaping the stories through args composition.
+        // Inherited data coming from the Loading story.
+        ...Loading.args,
+        loading: false,
+    },
+};
+```
