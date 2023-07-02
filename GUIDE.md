@@ -4,6 +4,8 @@
 -   [시작하기](#시작하기)
 -   [간단한 컴포넌트](#간단한-컴포넌트)
 -   [복잡한 컴포넌트](#복잡한-컴포넌트)
+-   [데이터 연결](#데이터-연결)
+-   [스크린 구성하기](#스크린-구성하기)
 
 ---
 
@@ -12,6 +14,8 @@
 -   [리액트를 위한 스토리북 튜토리얼 | Storybook.js.org](https://storybook.js.org/tutorials/intro-to-storybook/react/en/get-started/)
 
 ---
+
+ㄴ
 
 ## 시작하기
 
@@ -44,7 +48,9 @@ yarn storybook
 -   [Config](#config)
 -   [Catch accessibilisty issues](#catch-accessibility-issues)
 
-#### Setup Task
+### Setup Task
+
+#### `Task.jsx`
 
 ```jsx
 // src/components/Task.jsx
@@ -101,6 +107,8 @@ export default function Task({
 }
 ```
 
+#### `Task.stories.jsx`
+
 ```jsx
 // src/components/Task.stories.jsx
 import Task from "./Task";
@@ -153,9 +161,11 @@ export const Archived = {
 -   스토리 생성 시, 기본 `task` 인수를 사용해 컴포넌트가 예상하는 task의 형태를 구성하고 이는 일반적으로 실제 데이터를 모델로 생성됨. `export`하는 것은 차후 스토리에서 이를 재사용할 수 있도록 함.
     -   [`액션(Actions addon)`](https://storybook.js.org/docs/react/essentials/actions)은 UI 컴포넌트를 독립적으로 만들 때, 컴포넌트 상호작용을 확인할 때 도움이 됨. 앱의 컨텍스트에서 함수와 state에 접근하지 못할 때, `action()`을 사용해 끼워 넣으면 됨.
 
-#### Config
+### Config
 
 -   스토리북의 구성 파일을 몇 가지 변경해 최근 생성 스토리를 인식하고 애플리케이션의 CSS 파일(src/index.css에 위치한)을 사용할 수 있도록 해야 함.
+
+#### `main.js`
 
 ```javascript
 // .storybook/main.js
@@ -178,6 +188,8 @@ const config = {
 };
 export default config;
 ```
+
+#### `preview.js`
 
 ```javascript
 // .storybook/preview.js
@@ -203,7 +215,7 @@ export default preview;
 -   `parameters`는 일반적으로 스토리북의 기능과 애드온의 동작을 제어하기 위해 사용. 이를 사용하여 `actions(mocked callbacks)`이 처리되는 방식을 구성.
 -   `actions`은 클릭이 되었을 때, 스토리북 UI의 actions 패널에 나타날 콜백을 생성함. 따라서 pin 버튼을 만들때, UI에서 버튼 클릭의 성공 여부를 확인 가능.
 
-#### Catch accessibility issues
+### Catch accessibility issues
 
 -   접근성 테스트는 자동화된 도구를 사용하여 렌더링된 DOM을 WCAG 규칙 및 기타 업계에서 인정하는 모범 사례에 기반한 일련의 휴리스틱에 따라 감사하는 관행.
 
@@ -227,7 +239,9 @@ $
 
 -   [Setup TaskList](#setup-tasklist)
 
-#### Setup TaskList
+### Setup TaskList
+
+#### `TaskList.jsx`
 
 ```jsx
 // src/components/TaskList.jsx
@@ -288,6 +302,8 @@ export default function TaskList({ loading, tasks, onPinTask, onArchiveTask }) {
 }
 ```
 
+#### `TaskList.stories.jsx`
+
 ```jsx
 // src/components/TaskList.stories.jsx
 import TaskList from "./TaskList";
@@ -346,3 +362,291 @@ export const Empty = {
     },
 };
 ```
+
+---
+
+## 데이터 연결
+
+-   위에서 작성한 `TaskList` 컴포넌트는 자체 구현 외에는 외부와 통신하지 않는 프레젠테이션 컴포넌트. 그러모르 데이터를 가져오려면 데이터 Provider와 연결해야함.
+-   이 튜토리얼에서는 `@reduxjs/toolkit`과 `react-redux`를 사용.
+
+```shell
+$ npm install react-redux @reduxjs/toolkit
+$ yarn add react-redux @reduxjs/toolkit
+```
+
+#### `store.js`
+
+```javascript
+// src/lib/store.js
+/* A simple redux store/actions/reducer implementation.
+ * A true app would be more complex and separated into different files.
+ */
+import { configureStore, createSlice } from "@reduxjs/toolkit";
+
+/*
+ * The initial state of our store when the app loads.
+ * Usually, you would fetch this from a server. Let's not worry about that now
+ */
+const defaultTasks = [
+    { id: "1", title: "Something", state: "TASK_INBOX" },
+    { id: "2", title: "Something more", state: "TASK_INBOX" },
+    { id: "3", title: "Something else", state: "TASK_INBOX" },
+    { id: "4", title: "Something again", state: "TASK_INBOX" },
+];
+const TaskBoxData = {
+    tasks: defaultTasks,
+    status: "idle",
+    error: null,
+};
+
+/*
+ * The store is created here.
+ * You can read more about Redux Toolkit's slices in the docs:
+ * https://redux-toolkit.js.org/api/createSlice
+ */
+const TasksSlice = createSlice({
+    name: "taskbox",
+    initialState: TaskBoxData,
+    reducers: {
+        updateTaskState: (state, action) => {
+            const { id, newTaskState } = action.payload;
+            const task = state.tasks.findIndex((task) => task.id === id);
+            if (task >= 0) {
+                state.tasks[task].state = newTaskState;
+            }
+        },
+    },
+});
+
+// The actions contained in the slice are exported for usage in our components
+export const { updateTaskState } = TasksSlice.actions;
+
+/*
+ * Our app's store configuration goes here.
+ * Read more about Redux's configureStore in the docs:
+ * https://redux-toolkit.js.org/api/configureStore
+ */
+const store = configureStore({
+    reducer: {
+        taskbox: TasksSlice.reducer,
+    },
+});
+
+export default store;
+```
+
+#### `TaskList.jsx`
+
+```jsx
+/// src/components/TaskList.jsx
+import React from "react";
+import Task from "./Task";
+import { useDispatch, useSelector } from "react-redux";
+import { updateTaskState } from "../lib/store";
+
+export default function TaskList() {
+    // We're retrieving our state from the store
+    const tasks = useSelector((state) => {
+        const tasksInOrder = [
+            ...state.taskbox.tasks.filter((t) => t.state === "TASK_PINNED"),
+            ...state.taskbox.tasks.filter((t) => t.state !== "TASK_PINNED"),
+        ];
+        const filteredTasks = tasksInOrder.filter(
+            (t) => t.state === "TASK_INBOX" || t.state === "TASK_PINNED"
+        );
+        return filteredTasks;
+    });
+
+    const { status } = useSelector((state) => state.taskbox);
+
+    const dispatch = useDispatch();
+
+    const pinTask = (value) => {
+        // We're dispatching the Pinned event back to our store
+        dispatch(updateTaskState({ id: value, newTaskState: "TASK_PINNED" }));
+    };
+    const archiveTask = (value) => {
+        // We're dispatching the Archive event back to our store
+        dispatch(updateTaskState({ id: value, newTaskState: "TASK_ARCHIVED" }));
+    };
+    const LoadingRow = (
+        <div className="loading-item">
+            <span className="glow-checkbox" />
+            <span className="glow-text">
+                <span>Loading</span> <span>cool</span> <span>state</span>
+            </span>
+        </div>
+    );
+    if (status === "loading") {
+        return (
+            <div className="list-items" data-testid="loading" key={"loading"}>
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+                {LoadingRow}
+            </div>
+        );
+    }
+    if (tasks.length === 0) {
+        return (
+            <div className="list-items" key={"empty"} data-testid="empty">
+                <div className="wrapper-message">
+                    <span className="icon-check" />
+                    <p className="title-message">You have no tasks</p>
+                    <p className="subtitle-message">Sit back and relax</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="list-items" data-testid="success" key={"success"}>
+            {tasks.map((task) => (
+                <Task
+                    key={task.id}
+                    task={task}
+                    onPinTask={(task) => pinTask(task)}
+                    onArchiveTask={(task) => archiveTask(task)}
+                />
+            ))}
+        </div>
+    );
+}
+```
+
+### 데코레이터로 컨텍스트 공급하기
+
+-   위의 예제로 변경하면 스토리북 스토리가 더 이상 작동하지 않는데, `TaskList`가 이제 연결된 컴포넌트이기 때문에 `Task`를 검색하고 업데이트하는데 Redux 스토어에 의존하기 때문.
+
+-   다양한 방법으로 해결할 수 있지만, 데코레이터를 사용해 스토리북 스토리에서 모킹 스토어를 제공할 수 있음.
+
+-   [`excludeStories`](https://storybook.js.org/docs/react/api/csf#non-story-exports) 모킹된 상태가 스토리로 취급되지 않도록 하는 스토리북 구성 필드.
+
+#### `TaskList.stories.jsx`
+
+```jsx
+// src/components/TaskList.stories.jsx
+import TaskList from "./TaskList";
+import * as TaskStories from "./Task.stories";
+import { Provider } from "react-redux";
+import { configureStore, createSlice } from "@reduxjs/toolkit";
+
+// A super-simple mock of the state of the store
+export const MockedState = {
+    tasks: [
+        { ...TaskStories.Default.args.task, id: "1", title: "Task 1" },
+        { ...TaskStories.Default.args.task, id: "2", title: "Task 2" },
+        { ...TaskStories.Default.args.task, id: "3", title: "Task 3" },
+        { ...TaskStories.Default.args.task, id: "4", title: "Task 4" },
+        { ...TaskStories.Default.args.task, id: "5", title: "Task 5" },
+        { ...TaskStories.Default.args.task, id: "6", title: "Task 6" },
+    ],
+    status: "idle",
+    error: null,
+};
+
+// A super-simple mock of a redux store
+const Mockstore = ({ taskboxState, children }) => (
+    <Provider
+        store={configureStore({
+            reducer: {
+                taskbox: createSlice({
+                    name: "taskbox",
+                    initialState: taskboxState,
+                    reducers: {
+                        updateTaskState: (state, action) => {
+                            const { id, newTaskState } = action.payload;
+                            const task = state.tasks.findIndex(
+                                (task) => task.id === id
+                            );
+                            if (task >= 0) {
+                                state.tasks[task].state = newTaskState;
+                            }
+                        },
+                    },
+                }).reducer,
+            },
+        })}
+    >
+        {children}
+    </Provider>
+);
+
+export default {
+    component: TaskList,
+    title: "TaskList",
+    decorators: [(story) => <div style={{ padding: "3rem" }}>{story()}</div>],
+    tags: ["autodocs"],
+    // excludeStories는 모킹된 상태가 스토리로 취급되지 않도록 하는 스토리북 구성 필드.
+    excludeStories: /.*MockedState$/,
+};
+
+export const Default = {
+    decorators: [
+        (story) => <Mockstore taskboxState={MockedState}>{story()}</Mockstore>,
+    ],
+};
+
+export const WithPinnedTasks = {
+    decorators: [
+        (story) => {
+            const pinnedtasks = [
+                ...MockedState.tasks.slice(0, 5),
+                { id: "6", title: "Task 6 (pinned)", state: "TASK_PINNED" },
+            ];
+
+            return (
+                <Mockstore
+                    taskboxState={{
+                        ...MockedState,
+                        tasks: pinnedtasks,
+                    }}
+                >
+                    {story()}
+                </Mockstore>
+            );
+        },
+    ],
+};
+
+export const Loading = {
+    decorators: [
+        (story) => (
+            <Mockstore
+                taskboxState={{
+                    ...MockedState,
+                    status: "loading",
+                }}
+            >
+                {story()}
+            </Mockstore>
+        ),
+    ],
+};
+
+export const Empty = {
+    decorators: [
+        (story) => (
+            <Mockstore
+                taskboxState={{
+                    ...MockedState,
+                    tasks: [],
+                }}
+            >
+                {story()}
+            </Mockstore>
+        ),
+    ],
+};
+```
+
+---
+
+## 스크린 구성하기
+
+-   [화면 연결하기](#화면-연결하기)
+
+### 화면 연결하기
