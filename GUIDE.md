@@ -5,17 +5,17 @@
 -   [간단한 컴포넌트](#간단한-컴포넌트)
 -   [복잡한 컴포넌트](#복잡한-컴포넌트)
 -   [데이터 연결](#데이터-연결)
--   [스크린 구성하기](#스크린-구성하기)
 
 ---
 
 ## References
 
 -   [리액트를 위한 스토리북 튜토리얼 | Storybook.js.org](https://storybook.js.org/tutorials/intro-to-storybook/react/en/get-started/)
+-   [Storybook w/ Typescript](https://storybook.js.org/docs/react/configure/typescript#page-top)
+-   [Storybook w/ Styled Components](https://storybook.js.org/recipes/styled-components)
+-   [Storybook 배포하기](https://storybook.js.org/tutorials/intro-to-storybook/react/ko/deploy/)
 
 ---
-
-ㄴ
 
 ## 시작하기
 
@@ -23,21 +23,28 @@
 
 [컴포넌트 주도 개발 방법론(CDD, Component-Driven Development)](https://www.componentdriven.org)에 따라 UI를 구성할 것이며, 이는 컴포넌트부터 시작하여 마지막 화면에 이르기 까지 상향식(bottom-up)으로 UI를 개발하는 과정. CDD는 UI 구축 시 직면하게 되는 규모의 복잡성을 해결하는 데 효과적.
 
+#### `package.json`
+
 ```json
-"scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "init-msw": "msw init public/"
-},
+// package.json
+{
+    ...,
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "storybook": "storybook dev -p 6006",
+        "build-storybook": "storybook build",
+        "init-msw": "msw init public/"
+    },
+    ...
+}
 ```
 
 ```bash
 # Start the component explorer on port 6006:
-npm run storybook
-yarn storybook
+$ npm run storybook
+$ yarn storybook
 ```
 
 ---
@@ -367,7 +374,7 @@ export const Empty = {
 
 ## 데이터 연결
 
--   위에서 작성한 `TaskList` 컴포넌트는 자체 구현 외에는 외부와 통신하지 않는 프레젠테이션 컴포넌트. 그러모르 데이터를 가져오려면 데이터 Provider와 연결해야함.
+-   위에서 작성한 `TaskList` 컴포넌트는 자체 구현 외에는 외부와 통신하지 않는 프레젠테이션 컴포넌트. 그러므로 데이터를 가져오려면 데이터 Provider와 연결해야함.
 -   이 튜토리얼에서는 `@reduxjs/toolkit`과 `react-redux`를 사용.
 
 ```shell
@@ -642,11 +649,3 @@ export const Empty = {
     ],
 };
 ```
-
----
-
-## 스크린 구성하기
-
--   [화면 연결하기](#화면-연결하기)
-
-### 화면 연결하기
